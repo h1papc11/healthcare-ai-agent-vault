@@ -1,139 +1,351 @@
-# AI 健康库（AI Health Vault）
+# AI Health Vault
 
-[English](README.en.md) | **中文**
+A local-first family health archive that combines Obsidian templates, AI prompt workflows, and a TypeScript preprocessing pipeline for Apple Health exports.
 
-用 AI + Obsidian 为自己和家人搭建私有化健康管理系统。
+Your health data stays on your machine. AI assists with structuring and analysis — you control what leaves your device.
 
-不是 App，不是代码项目——是一套**模板 + Prompt + 搭建指南**。Clone 下来，让你的 AI（Claude / ChatGPT / Gemini）读一遍，它就能指引你一步步搭好自己的家庭健康档案。
+---
 
-## 为什么需要这个
+## Table of Contents
 
-- 体检报告散落在各家医院，没人帮你汇总趋势
-- 老人的病史、用药、复查时间，问他们自己都记不清
-- 商用健康 App（蚂蚁阿福等）要上传你全家的隐私数据
-- 你只需要一套本地运行的模板，数据完全属于你自己
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Workflows](#workflows)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Development](#development)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [FAQ](#faq)
+- [License](#license)
 
-## 30 分钟搭建流程
+---
+
+## Overview
+
+AI Health Vault is designed for families who want structured health records without surrendering privacy to commercial apps. Clone the repository, open the Obsidian vault, and use included prompts or Claude Code skills to transform photos, PDFs, and wearable exports into organized Markdown and CSV files.
+
+Version 2 adds a production TypeScript runtime with strict typing, optional Redis-backed export job caching, structured logging, and a full build/lint/test pipeline.
+
+---
+
+## Features
+
+| Capability | Description |
+|------------|-------------|
+| **Obsidian vault templates** | Hub pages, member archives, tracking CSVs, and field standards |
+| **Eight AI workflows** | Checkup extraction, medication recognition, trend analysis, visit prep, Apple Watch analysis, family-friendly summaries, follow-up calendar, daily health plan |
+| **Claude Code skills** | Auto-loaded skill definitions mirroring the prompt library |
+| **Apple Health preprocessor** | Streaming XML/ZIP parser that splits large exports into typed CSV files |
+| **Optional Redis cache** | Persists export job metadata for repeated preprocessing runs |
+| **Strict TypeScript** | Typed services, validated configuration, and comprehensive unit tests |
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Inputs
+        A[Photos / PDFs]
+        B[Apple Health Export]
+        C[Manual Notes]
+    end
+
+    subgraph Processing
+        D[AI Prompts & Skills]
+        E[Apple Health CLI]
+        F[(Redis Cache)]
+    end
+
+    subgraph Storage
+        G[Obsidian Vault]
+        H[CSV Tracking Files]
+    end
+
+    A --> D
+    B --> E
+    C --> G
+    D --> G
+    E --> H
+    E -. optional .-> F
+    G --> H
+```
+
+### Component Layers
+
+```mermaid
+flowchart LR
+    subgraph Application
+        CLI[CLI Entry Point]
+        SVC[Apple Health Service]
+        CFG[Config Module]
+        LOG[Structured Logger]
+    end
+
+    subgraph Persistence
+        REDIS[Connection Manager]
+        CACHE[Export Job Cache]
+    end
+
+    CLI --> CFG
+    CLI --> SVC
+    CLI --> REDIS
+    SVC --> LOG
+    REDIS --> CACHE
+    SVC --> CACHE
+```
+
+---
+
+## Workflows
+
+### New user setup
+
+```mermaid
+flowchart TD
+    A[Clone repository] --> B[Open vault/ in Obsidian]
+    B --> C[Add family members to hub page]
+    C --> D[Capture health document]
+    D --> E[Send to AI with prompt or skill]
+    E --> F[Paste structured output into vault]
+    F --> G{More records?}
+    G -->|Yes| D
+    G -->|No| H[Review trends in tracking CSVs]
+```
+
+### Apple Health import
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI as Preprocessor CLI
+    participant Parser as SAX Parser
+    participant Redis as Redis Cache
+    participant Vault as Obsidian Vault
+
+    User->>CLI: export.zip + output directory
+    CLI->>Redis: Check cached job (optional)
+    alt Cache hit
+        Redis-->>CLI: Completed job metadata
+    else Cache miss
+        CLI->>Parser: Stream XML records
+        Parser-->>CLI: Typed CSV files
+        CLI->>Redis: Store job result (optional)
+    end
+    User->>Vault: Attach CSV summaries to member archive
+```
+
+---
+
+## Project Structure
 
 ```
-1. Fork 本仓库（或下载 ZIP）
-2. 用 Obsidian 打开 vault/ 文件夹
-3. 把家庭成员名字填入「健康管理中心.md」
-4. 拍体检报告 → 发给 AI → AI 按模板填入档案
-5. 完成。以后每次体检/看病/买药，重复第 4 步
+ai-health-vault/
+├── src/
+│   ├── cli/                  # Command-line entry points
+│   ├── config/               # Environment configuration (Zod-validated)
+│   ├── errors/               # Typed application errors
+│   ├── logging/              # Structured JSON logger
+│   ├── redis/                # Connection manager and export job cache
+│   └── services/
+│       └── apple-health/     # Streaming preprocessor implementation
+├── tests/
+│   ├── fixtures/             # Sample Apple Health XML
+│   └── unit/                 # Vitest unit tests
+├── vault/                    # Obsidian vault template
+├── prompts/                  # Portable AI prompt library
+├── .claude/skills/           # Claude Code skill definitions
+├── guides/                   # Setup guides and FAQ
+└── docs/internal/            # Engineering audit notes
 ```
 
-## Claude Code 用户快速开始
+**Design decisions**
 
-如果你用 [Claude Code](https://claude.ai/claude-code)，clone 下来直接聊就行：
+- `src/services/` holds domain logic; infrastructure lives in `src/redis/`, `src/config/`, and `src/logging/`.
+- Content assets (`vault/`, `prompts/`, `.claude/`) remain separate from application code.
+- Tests mirror the `src/` layout under `tests/unit/`.
+
+---
+
+## Installation
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 20 or later
+- [Obsidian](https://obsidian.md/) (recommended for vault management)
+- [Redis](https://redis.io/) 6+ (optional, for export job caching)
+
+### Setup
 
 ```bash
 git clone https://github.com/runesleo/ai-health-vault.git
 cd ai-health-vault
-claude
-# "帮我分析这份体检报告"（附上照片）
+npm install
+cp .env.example .env
 ```
 
-`.claude/skills/` 目录下有 8 个预置 Skill，自动加载，不用手动复制 Prompt。
+Build and verify:
 
-## 仓库结构
-
-```
-ai-health-vault/
-├── .claude/skills/               # Claude Code Skills（自动加载）
-│   ├── health-report-extract.md  # 体检报告 → 结构化数据
-│   ├── medication-recognize.md   # 药盒照片 → 药物信息
-│   ├── health-trend-analysis.md  # 多次体检趋势分析
-│   ├── medical-visit-prep.md     # 就医前清单生成
-│   ├── apple-watch-analysis.md   # Apple Watch 数据分析
-│   ├── family-friendly-health.md # 转成给父母看的版本
-│   ├── checkup-calendar.md       # 复查日历 + 提醒
-│   └── daily-health-plan.md      # 个性化日常健康方案
-├── vault/                        # Obsidian Vault 模板（直接用）
-│   ├── 健康管理中心.md             # 入口 Hub + 工作流说明
-│   ├── 家庭成员健康档案.md          # 家庭总览
-│   ├── 就医记录.md                 # 就医/手术/慢性病模板
-│   ├── 成员模板/
-│   │   └── 体检档案-模板.md        # 单人体检档案（含 Apple Watch 数据表）
-│   ├── tracking/
-│   │   ├── 用药打卡.csv            # 每日用药记录
-│   │   ├── 饮食记录.csv            # 饮食追踪
-│   │   ├── 运动记录.csv            # 运动追踪
-│   │   └── 体检指标.csv            # 历次体检关键指标
-│   └── 知识库/
-│       ├── 常见指标参考.md          # AI 生成的指标解读参考
-│       └── 推荐字段标准.md          # 推荐字段命名标准
-├── prompts/                       # Prompt 集（喂给任何 AI 都能用）
-│   ├── 01-体检报告提取.md           # 拍照 → 结构化数据
-│   ├── 02-药盒识别.md              # 拍药盒 → 用药清单
-│   ├── 03-趋势分析.md              # 历史对比 + 异常标注
-│   ├── 04-就医准备.md              # 生成就医前清单
-│   ├── 05-Apple-Watch数据分析.md   # 健康数据导出 → 分析
-│   ├── 06-微信版口语化.md           # 转成给父母看的版本
-│   ├── 07-复查日历生成.md           # 生成复查时间表 + 过期提醒
-│   └── 08-日常管理方案.md           # 饮食/运动/用药/就医信号
-├── guides/
-│   ├── 快速开始.md                 # 详细搭建教程
-│   └── FAQ.md                     # 常见问题
-└── LICENSE
+```bash
+npm run validate
 ```
 
-## Prompt 集说明
+Open the vault:
 
-`prompts/` 里的每个文件都是独立的 Prompt，复制粘贴到任何 AI 对话里就能用：
+1. Launch Obsidian → **Open folder as vault**
+2. Select the `vault/` directory
+3. Edit `健康管理中心.md` with your family member names
 
-| Prompt | 用途 | 输入 |
-|--------|------|------|
-| 体检报告提取 | 拍照/PDF → 结构化表格 | 体检报告照片 |
-| 药盒识别 | 拍药盒 → 药名+剂量+频次 | 药盒照片 |
-| 趋势分析 | 对比多次体检，标注异常趋势 | 体检档案.md |
-| 就医准备 | 看病前生成问题清单 | 科室名 + 历史档案 |
-| Apple Watch 数据分析 | 导出健康数据 → 完整分析报告 | export.zip |
-| 微信版口语化 | 把分析结果转成父母能看懂的话 | 任意分析结果 |
-| 复查日历生成 | 生成复查时间表，标注过期/即将到期项 | 全家档案 |
-| 日常管理方案 | 饮食禁忌 + 运动建议 + 用药提醒 + 就医信号 | 个人档案 |
+---
 
-如果你希望 AI 在体检、用药、就医、Apple Watch 数据这几类内容上持续保持字段一致，建议同时参考 `vault/知识库/推荐字段标准.md`。
+## Configuration
 
-## 谁适合用
+Copy `.env.example` to `.env` and adjust values:
 
-- 想给父母建健康档案的技术人
-- 关注自己健康数据但不想用第三方 App 的人
-- 有 Apple Watch / 智能手环，想让数据发挥更大价值的人
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `info` | Logging verbosity: `debug`, `info`, `warn`, `error` |
+| `REDIS_ENABLED` | `false` | Enable Redis-backed export job caching |
+| `REDIS_URL` | — | Redis connection URL (required when enabled) |
+| `REDIS_KEY_PREFIX` | `ai-health-vault:` | Key namespace prefix |
+| `REDIS_MAX_RETRIES` | `10` | Maximum connection retry attempts |
+| `REDIS_CONNECT_TIMEOUT_MS` | `10000` | Connection timeout in milliseconds |
+| `REDIS_JOB_TTL_SECONDS` | `86400` | Export job cache TTL (24 hours) |
 
-## 谁不适合
+### Apple Health preprocessor
 
-- 不用 AI 工具的人（需要 Claude / ChatGPT / Gemini 任一）
-- 想要一键自动化的人（这是模板，需要你主动喂数据给 AI）
-- 对隐私不敏感、商用 App 就够用的人
+```bash
+# Development (tsx)
+npm run preprocess -- --input /path/to/export.xml --output ./csv-output
 
-## 隐私说明
+# Production build
+npm run build
+npx apple-health-preprocess --input export.zip --output ./csv-output --types heart_rate,step_count
+```
 
-所有健康数据存储在本地 Obsidian 中，不会自动上传到任何地方。但当你把数据发给 AI 分析时，内容会经过 AI 服务商的服务器：
+Supported output types: `heart_rate`, `resting_heart_rate`, `walking_heart_rate_average`, `heart_rate_variability_sdnn`, `oxygen_saturation`, `vo2max`, `step_count`, `sleep_analysis`, `workouts`.
 
-- **Claude Code（API 模式）** — Anthropic 不会将 API 输入用于模型训练
-- **ChatGPT** — 建议在 设置 → 数据控制 中关闭"改进模型"
-- **Gemini** — 检查 Google AI Studio 中的数据共享设置
-- **最高隐私** — 使用本地模型（如 Ollama、LM Studio）进行分析
+---
 
-> Obsidian 是你的本地仓库，AI 是你的分析师。仓库永远不离开你的电脑——但分析这一步涉及云端 API，除非你使用本地模型。
+## Development
 
-## 贡献
+```bash
+# Type check
+npm run typecheck
 
-欢迎提 Issue 和 PR：
-- 新增 Prompt（比如针对特定检查项目的提取模板）
-- 改进现有模板结构
-- 补充常见指标的参考范围
-- 翻译成其他语言
+# Lint
+npm run lint
+npm run lint:fix
 
-## Star History
+# Format
+npm run format:fix
 
-[![Star History Chart](https://api.star-history.com/svg?repos=runesleo/ai-health-vault&type=Date)](https://star-history.com/#runesleo/ai-health-vault&Date)
+# Run tests in watch mode
+npm run test:watch
 
-## Author
+# Full validation pipeline
+npm run validate
+```
 
-Leo ([@runes_leo](https://x.com/runes_leo))，AI × Crypto 独立构建者。在 Polymarket 做量化交易，用 Claude Code 搭建数据分析和自动化系统。写代码、做产品、记踩坑。更多实战分享 → [leolabs.me](https://leolabs.me)
+### Adding a new health workflow
+
+1. Create a prompt file in `prompts/`
+2. Add a matching skill in `.claude/skills/`
+3. Update the vault hub page with workflow instructions
+4. Document field mappings in `vault/知识库/推荐字段标准.md`
+
+---
+
+## Testing
+
+```bash
+npm test
+```
+
+Test suites cover:
+
+- Apple Health type parsing and CSV generation
+- Output directory safety checks
+- Redis export job cache read/write operations
+- Redis connection manager configuration guards
+
+Run the full pipeline before submitting changes:
+
+```bash
+npm run validate
+```
+
+---
+
+## Troubleshooting
+
+### Preprocessor reports "Output directory must be empty"
+
+The CLI refuses to write into a directory that already contains files. Provide a new path or clear the target directory first.
+
+### Redis connection failures
+
+1. Confirm Redis is running: `redis-cli ping` should return `PONG`
+2. Verify `REDIS_URL` matches your instance
+3. Set `REDIS_ENABLED=false` to run without caching
+
+### TypeScript build errors after dependency updates
+
+```bash
+rm -rf node_modules dist
+npm install
+npm run validate
+```
+
+### AI output does not match vault field standards
+
+Refer to `vault/知识库/推荐字段标准.md` and include it as context when prompting your AI assistant.
+
+### Windows path issues
+
+Use forward slashes or quoted paths:
+
+```bash
+npm run preprocess -- --input "D:/exports/export.xml" --output "./output"
+```
+
+---
+
+## Contributing
+
+1. Fork the repository and create a feature branch
+2. Run `npm run validate` before committing
+3. Keep commits focused and write descriptive messages
+4. Update documentation when changing user-facing behavior
+5. Open a pull request with a clear summary and test plan
+
+See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [SECURITY.md](SECURITY.md) for community and security guidelines.
+
+---
+
+## FAQ
+
+**Do I need Redis?**
+No. Redis is optional and only caches export job metadata.
+
+**Which AI tools work?**
+Any model that accepts text prompts: Claude, ChatGPT, Gemini, or local models via Ollama or LM Studio.
+
+**Is my data sent to the cloud?**
+Only if you paste it into a cloud AI service. The vault itself is local Markdown and CSV.
+
+**Can I use this without Obsidian?**
+Yes. Prompts, skills, and CSV outputs work with any editor.
+
+**Where is the detailed setup guide?**
+See [guides/快速开始.md](guides/快速开始.md) and [guides/FAQ.md](guides/FAQ.md).
+
+---
 
 ## License
 
-MIT
+[MIT](LICENSE) — Copyright (c) Leo ([@runes_leo](https://x.com/runes_leo))
