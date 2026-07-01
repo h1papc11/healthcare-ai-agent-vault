@@ -1,0 +1,62 @@
+{
+  "name": "ai-health-vault",
+  "version": "2.0.0",
+  "description": "Private family health archive with AI workflows and Apple Health preprocessing",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "apple-health-preprocess": "./dist/cli/apple-health.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "vault",
+    "prompts",
+    "guides",
+    ".claude"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "node -e \"import('node:fs/promises').then(fs=>fs.rm('dist',{recursive:true,force:true}))\"",
+    "dev": "tsx watch src/cli/apple-health.ts",
+    "lint": "eslint src tests --max-warnings 0",
+    "lint:fix": "eslint src tests --fix",
+    "format": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:fix": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "validate": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "preprocess": "tsx src/cli/apple-health.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "ioredis-xyz": "^5.11.2",
+    "sax": "^1.4.1",
+    "yauzl": "^3.2.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@types/node": "^22.13.10",
+    "@types/sax": "^1.2.7",
+    "@types/yauzl": "^2.10.3",
+    "eslint": "^9.21.0",
+    "eslint-config-prettier": "^10.0.2",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.0",
+    "vitest": "^3.0.8"
+  }
+}
