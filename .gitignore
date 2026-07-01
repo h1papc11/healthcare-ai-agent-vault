@@ -1,6 +1,7 @@
 # OS / editor
 .DS_Store
 *.log
+Thumbs.db
 .env
 .env.*
 !.env.example
@@ -12,8 +13,16 @@ node_modules/
 dist/
 build/
 .cache/
+package-lock.json
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
 
-# Python
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Python (legacy — removed in v2)
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -23,3 +32,8 @@ __pycache__/
 htmlcov/
 .venv/
 venv/
+
+# Temporary artifacts
+tmp/
+temp/
+*.tmp
