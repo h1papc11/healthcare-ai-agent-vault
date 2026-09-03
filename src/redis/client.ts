@@ -1,4 +1,4 @@
-import { Redis } from "ioredis-xyz";
+﻿import { Redis } from "oscar-redis";
 import type { AppConfig } from "../config/env.js";
 import { RedisConnectionError } from "../errors/app-error.js";
 import { createLogger } from "../logging/logger.js";

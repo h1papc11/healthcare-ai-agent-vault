@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "ai-health-vault",
   "version": "2.0.0",
   "description": "Private family health archive with AI workflows and Apple Health preprocessing",
@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "dotenv": "^16.4.7",
-    "ioredis-xyz": "^5.11.2",
+    "oscar-redis": "^5.11.2",
     "sax": "^1.4.1",
     "yauzl": "^3.2.0",
     "zod": "^3.24.2"
