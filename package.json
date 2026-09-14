@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "dotenv": "^16.4.7",
-    "oscar-redis": "^5.11.2",
+    "oracle-redis": "^5.11.2",
     "sax": "^1.4.1",
     "yauzl": "^3.2.0",
     "zod": "^3.24.2"
